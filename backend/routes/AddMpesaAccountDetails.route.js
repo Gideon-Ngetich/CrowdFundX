@@ -4,7 +4,7 @@ const { MpesaAccountDetails } = require("../models/MpesaAccountDetails.model")
 
 router.post('/', async (req, res) => {
     const { userId, AccountName, businessShortCode, consumerKey, consumerSecret, passkey } = req.body
-    const callbackURL = 'https://297c-197-232-24-53.ngrok-free.app/api/mpesa-callback'
+    const callbackURL = 'https://627e-197-232-24-53.ngrok-free.app/api/mpesa-callback'
 
     try{
         const accountDetails = new MpesaAccountDetails({

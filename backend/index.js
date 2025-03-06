@@ -9,6 +9,8 @@ const mpesaAccountDetails = require("./routes/AddMpesaAccountDetails.route")
 const mpesa_STK = require('./controllers/mpesaController')
 const mpesa_callback = require('./controllers/mpesaCallback')
 const login = require('./routes/login.route')
+const myCampaigns = require("./routes/myCampaigns.route")
+const updateCampaign = require('./routes/updateAmount.route')
 
 const app = express()
 
@@ -23,6 +25,8 @@ app.use('/api/mpesadetails', mpesaAccountDetails)
 app.use('/api/stk-push', mpesa_STK)
 app.use('/api/mpesa-callback', mpesa_callback)
 app.use('/api/login', login)
+app.use('/api/mycampaigns', myCampaigns)
+app.use('/api/update-campaign', updateCampaign)
 
 app.listen(port, () => {
     console.log(`app running on port ${port}`)

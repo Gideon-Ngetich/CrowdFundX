@@ -2,7 +2,8 @@ import React, { useState, useEffect} from "react";
 import { Button, Checkbox, Form, Input } from "antd";
 import { img1 } from "../assets/images";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { data, useNavigate } from "react-router-dom";
+
 
 const Login = () => {
   const onFinish = (values) => {
@@ -32,6 +33,9 @@ const Login = () => {
         console.log('User not found')
         return
       } else {
+        const { userId, accessToken, targetAmount, currentAmount } = response.data
+        localStorage.setItem('code', userId)
+        localStorage.setItem('at', accessToken)
         console.log("Login successful")
         navigateTo('/dashboard')
       }

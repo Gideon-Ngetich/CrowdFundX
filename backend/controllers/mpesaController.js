@@ -67,7 +67,7 @@ router.post("/", async (req, res) => {
                 "Content-Type": "application/json",
             },
         });
-
+        console.log(stkResponse.data)
         if (stkResponse.data.ResponseCode === "0") {
             // Record transaction
             const transaction = new CrowdFundingRecords({
