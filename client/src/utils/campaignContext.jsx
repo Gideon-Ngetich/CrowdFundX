@@ -12,6 +12,7 @@ export const CampaignProvider = ({children}) => {
             setLoading(true);
             const response = await axios.get(`${import.meta.env.VITE_DEV_ENDPOINT}/api/crowdfunding`);
             setCampaigns(response.data);
+            console.log(response.data)
         } catch (error) {
             console.error("Error fetching campaigns:", error);
         } finally {

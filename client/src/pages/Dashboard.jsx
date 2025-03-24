@@ -12,6 +12,7 @@ import { Avatar, Card } from "antd";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import { useCampaigns } from "../utils/campaignContext";
+import Navbar from "../components/Navbar";
 
 const { Meta } = Card;
 const { Sider, Content } = Layout;
@@ -25,8 +26,7 @@ const Dashboard = () => {
 
   const token = localStorage.getItem("token");
   const userId = localStorage.getItem("code");
-  const { setCampaigns } = useCampaigns()
-
+  const { setCampaigns } = useCampaigns();
 
   useEffect(() => {
     const fetchCampaigns = async () => {
@@ -44,7 +44,7 @@ const Dashboard = () => {
 
         if (data && data.length > 0) {
           setCampaigns(data);
-          setMyCampaigns(data)
+          setMyCampaigns(data);
         } else {
           setError("No campaigns found.");
         }
@@ -54,7 +54,6 @@ const Dashboard = () => {
       } finally {
         setLoading(false);
       }
-
     };
 
     fetchCampaigns();
@@ -97,12 +96,16 @@ const Dashboard = () => {
                     src="https://gw.alipayobjects.com/zos/rmsportal/JiqGstEfoWAOHiTxclqi.png"
                   />
                 }
+                className="z-0"
               >
                 <Meta
                   title={campaign.campaignTitle}
                   description={campaign.description}
                 />
-                <Link to={`/dashboard/${campaign._id}`} className="pt-3 text-blue-500 cursor-pointer flex gap-2 hover:gap-3 hover:text-blue-600 duration-100">
+                <Link
+                  to={`/dashboard/${campaign._id}`}
+                  className="pt-3 text-blue-500 cursor-pointer flex gap-2 hover:gap-3 hover:text-blue-600 duration-100"
+                >
                   <p>View</p> <DoubleRightOutlined />
                 </Link>
               </Card>
@@ -119,50 +122,53 @@ const Dashboard = () => {
   };
 
   return (
-    <Layout className="h-screen">
-      <Sider trigger={null} collapsible collapsed={collapsed}>
-        <div className="demo-logo-vertical" />
-        <Button
-          type="text"
-          icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
-          onClick={() => setCollapsed(!collapsed)}
-          style={{
-            fontSize: "16px",
-            width: 64,
-            height: 64,
-            color: "white",
-          }}
-        />
-        <Menu
-          theme="dark"
-          mode="inline"
-          defaultSelectedKeys={["1"]}
-          onClick={(e) => setSelectedKey(e.key)}
-          items={[
-            { key: "1", icon: <UserOutlined />, label: "My Campaigns" },
-            {
-              key: "2",
-              icon: <VideoCameraOutlined />,
-              label: "Invited Campaigns",
-            },
-            { key: "3", icon: <UploadOutlined />, label: "Bank Accounts" },
-          ]}
-        />
-      </Sider>
-      <Layout>
-        <Content
-          style={{
-            margin: "24px 16px",
-            padding: 24,
-            minHeight: 280,
-            background: colorBgContainer,
-            borderRadius: borderRadiusLG,
-          }}
-        >
-          {renderContent()}
-        </Content>
+    <>
+      <Navbar />
+      <Layout className="h-screen pt-20">
+        <Sider trigger={null} collapsible collapsed={collapsed}>
+          <div className="demo-logo-vertical" />
+          <Button
+            type="text"
+            icon={collapsed ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            onClick={() => setCollapsed(!collapsed)}
+            style={{
+              fontSize: "16px",
+              width: 64,
+              height: 64,
+              color: "white",
+            }}
+          />
+          <Menu
+            theme="dark"
+            mode="inline"
+            defaultSelectedKeys={["1"]}
+            onClick={(e) => setSelectedKey(e.key)}
+            items={[
+              { key: "1", icon: <UserOutlined />, label: "My Campaigns" },
+              {
+                key: "2",
+                icon: <VideoCameraOutlined />,
+                label: "Invited Campaigns",
+              },
+              { key: "3", icon: <UploadOutlined />, label: "Bank Accounts" },
+            ]}
+          />
+        </Sider>
+        <Layout className="overflow-y-scroll">
+          <Content
+            style={{
+              margin: "24px 16px",
+              padding: 24,
+              minHeight: 280,
+              background: colorBgContainer,
+              borderRadius: borderRadiusLG,
+            }}
+          >
+            {renderContent()}
+          </Content>
+        </Layout>
       </Layout>
-    </Layout>
+    </>
   );
 };
 

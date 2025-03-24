@@ -26,6 +26,10 @@ const crowdFundingSchema = new mongoose.Schema({
     },
     mpesaAccount: {
         type: mongoose.Schema.Types.ObjectId, ref: "MpesaAccountDetails"
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now()
     }
 
 })

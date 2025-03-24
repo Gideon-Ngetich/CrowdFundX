@@ -45,7 +45,7 @@ const Register = () => {
         `${import.meta.env.VITE_DEV_ENDPOINT}/api/register`,
         formData
       );
-      if (response.status === 200) {
+      if (response.status === 201) {
         console.log("Registration success");
         navigateTo("/login");
       }
