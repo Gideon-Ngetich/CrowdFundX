@@ -6,6 +6,7 @@ import {
   UserOutlined,
   VideoCameraOutlined,
   DoubleRightOutlined,
+  PlusOutlined
 } from "@ant-design/icons";
 import { Button, Layout, Menu, theme, Spin, Alert } from "antd";
 import { Avatar, Card } from "antd";
@@ -164,6 +165,7 @@ const Dashboard = () => {
               borderRadius: borderRadiusLG,
             }}
           >
+            <Button className="mb-5 text-white " style={{backgroundColor: '#2d7ded', color: 'white'}}><Link to={'/dashboard/accountselection'}>Add Campaign</Link><PlusOutlined /></Button>
             {renderContent()}
           </Content>
         </Layout>

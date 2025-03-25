@@ -15,6 +15,7 @@ const getCampaignAccounts = require("./routes/getCampaignAccountDetails.route")
 const getCampaigns = require('./routes/getCampaigns.route')
 const groupFundingRegistration = require('./routes/GroupFundingRegistration.route')
 const getMpesaAccountDetails = require("./routes/getMpesaAccounts.route")
+const getCampaignDetails = require("./routes/getCrowdCampaignDetails.route")
 
 const app = express()
 
@@ -35,6 +36,7 @@ app.use('/api/getaccountdetails', getCampaignAccounts)
 app.use('/api/getcampaigns', getCampaigns)
 app.use('/api/groupfundingregistration', groupFundingRegistration)
 app.use('/api/getmpesadetails', getMpesaAccountDetails)
+app.use('/api/campaigndetails', getCampaignDetails)
 
 app.listen(port, () => {
     console.log(`app running on port ${port}`)

@@ -10,6 +10,7 @@ import Navbar from "./components/Navbar";
 import GroupRegistrationForm from "./pages/GroupRegistrationForm";
 import MpesaAccountForm from "./pages/MpesaAccountsForm";
 import CampaignDetails from "./pages/CrowdFundingDetails";
+import AccountTypeSelection from "./pages/AccountTypeSelection";
 
 function App() {
   return (
@@ -21,8 +22,9 @@ function App() {
       <Route path="/campaigns" element={<Campaigns />} />
       <Route path="/campaign/:id" element={<CampaignDetails />} />
       <Route path="/dashboard/:id" element={<CrowdCampaignDetails />} />
-      <Route path="/group-registration" element={<GroupRegistrationForm />} />
+      <Route path="/dashboard/accountselection/groupfundingregistration" element={<GroupRegistrationForm />} />
       <Route path="/mpesaacountregistration" element={<MpesaAccountForm />} />
+      <Route path="/dashboard/accountselection" element={<AccountTypeSelection />} />
 
     </Routes>
 
