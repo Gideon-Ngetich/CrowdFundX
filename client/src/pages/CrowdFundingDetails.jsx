@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Carousel, Input, Button, Card, Progress, message } from "antd";
+import { Carousel, Input, Button, Card, Progress, message, Modal } from "antd";
 import Navbar from "../components/Navbar";
 import axios from "axios";
 
@@ -10,11 +10,12 @@ const CampaignDetails = () => {
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(true);
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [customAmount, setCustomAmount] = useState("");
-  const [selectedAmount, setSelectedAmount] = useState(null);
+  const [amount, setAmount] = useState("");
   const [isDonating, setIsDonating] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState(null);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [socket, setSocket] = useState(null);
 
-  // Predefined custom amounts
   const presetAmounts = [100, 500, 1000, 2000, 5000];
 
   useEffect(() => {
@@ -33,17 +34,72 @@ const CampaignDetails = () => {
     };
 
     fetchCampaign();
+
+    // Initialize WebSocket connection
+    const ws = new WebSocket(
+      `${import.meta.env.VITE_WS_ENDPOINT}?campaignId=${id}`
+    );
+
+    ws.onopen = () => {
+      console.log("WebSocket connected");
+      setSocket(ws);
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.event === "payment_update") {
+        handlePaymentUpdate(data.success);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+
+    ws.onclose = () => {
+      console.log("WebSocket disconnected");
+    };
+
+    return () => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+    };
   }, [id]);
+
+  const handlePaymentUpdate = (success) => {
+    if (success) {
+      setPaymentStatus("success");
+      message.success("Payment completed successfully!");
+
+      // Refresh campaign data
+      axios
+        .get(
+          `${import.meta.env.VITE_DEV_ENDPOINT}/api/campaigndetails?id=${id}`
+        )
+        .then((response) => setCampaign(response.data))
+        .catch((err) => console.error(err));
+
+      // Reset form fields and close modal after delay
+      setTimeout(() => {
+        setPhoneNumber("");
+        setAmount("");
+        setIsModalVisible(false);
+        setPaymentStatus(null);
+      }, 2000);
+    } else {
+      setPaymentStatus("failed");
+      message.error("Payment failed. Please try again.");
+    }
+  };
 
   const validatePhoneNumber = (number) => {
     return /^254[0-9]{9}$/.test(number);
   };
 
   const handleDonate = async () => {
-    const donationAmount = selectedAmount || customAmount;
-
-    if (!donationAmount) {
-      message.error("Please select or enter an amount");
+    if (!amount) {
+      message.error("Please enter an amount");
       return;
     }
 
@@ -55,33 +111,27 @@ const CampaignDetails = () => {
     }
 
     setIsDonating(true);
+    setPaymentStatus("pending");
+    setIsModalVisible(true);
 
     try {
-      // Make actual API call to process donation
       const response = await axios.post(
-        `${import.meta.env.VITE_DEV_ENDPOINT}/api/donate`,
+        `${import.meta.env.VITE_DEV_ENDPOINT}/api/crowddonation`,
         {
           campaignId: id,
-          amount: donationAmount,
+          amount: amount,
           phoneNumber: phoneNumber,
         }
       );
 
-      message.success(
-        `Donation of KES ${donationAmount} to ${campaign.campaignTitle} is being processed.`
-      );
-
-      // Reset form
-      setPhoneNumber("");
-      setCustomAmount("");
-      setSelectedAmount(null);
-
-      // Refresh campaign data to update progress
-      const updatedCampaign = await axios.get(
-        `${import.meta.env.VITE_DEV_ENDPOINT}/api/campaigndetails?id=${id}`
-      );
-      setCampaign(updatedCampaign.data);
+      if (response.data.success) {
+        message.success("Payment request sent to your phone");
+      } else {
+        setPaymentStatus("failed");
+        message.error("Failed to initiate payment");
+      }
     } catch (error) {
+      setPaymentStatus("failed");
       message.error("Donation failed. Please try again.");
       console.error("Donation error:", error);
     } finally {
@@ -89,10 +139,39 @@ const CampaignDetails = () => {
     }
   };
 
+  const handleModalClose = () => {
+    setIsModalVisible(false);
+    setPaymentStatus(null);
+  };
+
+  const getStatusMessage = () => {
+    switch (paymentStatus) {
+      case "pending":
+        return "Waiting for payment confirmation...";
+      case "success":
+        return "Payment successful! Thank you for your donation.";
+      case "failed":
+        return "Payment failed. Please try again.";
+      default:
+        return "Processing your donation...";
+    }
+  };
+
+  const getStatusIcon = () => {
+    switch (paymentStatus) {
+      case "success":
+        return <span className="text-green-500 text-2xl">✓</span>;
+      case "failed":
+        return <span className="text-red-500 text-2xl">✗</span>;
+      default:
+        return <span className="text-blue-500 text-2xl">⏳</span>;
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-screen">
-        <div>Loading campaign details...</div>
+        Loading...
       </div>
     );
   }
@@ -131,164 +210,101 @@ const CampaignDetails = () => {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto">
-        {/* Image Slider Section */}
-        <div className="p-4 md:p-8">
-          {campaign.images?.length ? (
-            <Carousel autoplay>
-              {campaign.images.map((image, index) => (
-                <div key={index}>
-                  <img
-                    src={image}
-                    alt={`Campaign ${index + 1}`}
-                    className="w-full h-96 object-cover"
-                  />
-                </div>
-              ))}
-            </Carousel>
-          ) : (
-            <div className="w-full h-96 bg-gray-100 flex items-center justify-center">
-              <p>No images available for this campaign</p>
-            </div>
-          )}
-        </div>
-
-        {/* Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 p-4 md:p-8">
-          {/* Description Section - Takes 2 columns on large screens */}
+      <div className="max-w-6xl mx-auto p-4 md:p-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column */}
           <div className="lg:col-span-2 space-y-8">
+            {/* Image Carousel */}
+            {campaign.images?.length ? (
+              <Carousel autoplay>
+                {campaign.images.map((image, index) => (
+                  <div key={index}>
+                    <img
+                      src={image}
+                      alt={`Campaign ${index + 1}`}
+                      className="w-full h-96 object-cover"
+                    />
+                  </div>
+                ))}
+              </Carousel>
+            ) : (
+              <div className="w-full h-96 bg-gray-100 flex items-center justify-center">
+                <p>No images available</p>
+              </div>
+            )}
+
+            {/* Campaign Details */}
             <Card>
               <h2 className="text-2xl font-bold mb-4">About the Campaign</h2>
-              <p className="text-gray-700 whitespace-pre-line">
+              <p className="whitespace-pre-line">
                 {campaign.description || "No description available."}
               </p>
             </Card>
-
-            {/* Additional campaign details can go here */}
-            {campaign.additionalDetails && (
-              <Card>
-                <h2 className="text-2xl font-bold mb-4">More Information</h2>
-                <div className="text-gray-700 whitespace-pre-line">
-                  {campaign.additionalDetails}
-                </div>
-              </Card>
-            )}
           </div>
 
-          {/* Right Sidebar - Takes 1 column on large screens */}
+          {/* Right Column */}
           <div className="space-y-8">
-            {/* Donation Section */}
-            {/* Donation Section */}
+            {/* Donation Card */}
             <Card>
               <h2 className="text-2xl font-bold mb-4">Support This Campaign</h2>
-              <div className="space-y-4">
-                {/* Phone Number Input */}
-                <div>
-                  <label className="block text-gray-700 mb-1">
-                    Phone Number (M-Pesa)
-                  </label>
-                  <Input
-                    placeholder="2547XXXXXXXX"
-                    value={phoneNumber}
-                    onChange={(e) =>
-                      setPhoneNumber(e.target.value.replace(/\D/g, ""))
-                    }
-                    maxLength={12}
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Format: 254 followed by 9 digits (e.g., 254712345678)
-                  </p>
-                </div>
 
-                {/* Preset Amount Selection */}
-                <div>
-                  <label className="block text-gray-700 mb-1">
-                    Select Amount (KES)
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {presetAmounts.map((amt) => (
-                      <Button
-                        key={amt}
-                        type={selectedAmount === amt ? "primary" : "default"}
-                        onClick={() => {
-                          if (selectedAmount === amt) {
-                            // Deselect if clicking the already selected amount
-                            setSelectedAmount(null);
-                            setCustomAmount("");
-                          } else {
-                            // Select new amount
-                            setSelectedAmount(amt);
-                            setCustomAmount(amt.toString());
-                          }
-                        }}
-                      >
-                        {amt.toLocaleString()}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Amount Input Field */}
-                <div>
-                  <label className="block text-gray-700 mb-1">
-                    {selectedAmount ? "Selected Amount" : "Enter Custom Amount"}
-                  </label>
-                  <div className="flex">
-                    <Input
-                      placeholder={selectedAmount ? "" : "Enter amount in KES"}
-                      value={
-                        selectedAmount
-                          ? selectedAmount.toString()
-                          : customAmount
-                      }
-                      onChange={(e) => {
-                        const value = e.target.value.replace(/\D/g, "");
-                        setCustomAmount(value);
-                        // Clear selected amount if user types in the input
-                        if (
-                          selectedAmount &&
-                          value !== selectedAmount.toString()
-                        ) {
-                          setSelectedAmount(null);
-                        }
-                      }}
-                      prefix="KES"
-                      suffix={
-                        selectedAmount && (
-                          <Button
-                            type="text"
-                            size="small"
-                            onClick={() => {
-                              setSelectedAmount(null);
-                              setCustomAmount("");
-                            }}
-                          >
-                            ×
-                          </Button>
-                        )
-                      }
-                    />
-                  </div>
-                </div>
-
-                {/* Donate Button */}
-                <Button
-                  type="primary"
-                  size="large"
-                  block
-                  onClick={handleDonate}
-                  loading={isDonating}
-                  disabled={!phoneNumber || (!selectedAmount && !customAmount)}
-                >
-                  Donate Now
-                </Button>
+              {/* Phone Input */}
+              <div className="mb-4">
+                <label className="block text-gray-700 mb-1">
+                  M-Pesa Number
+                </label>
+                <Input
+                  placeholder="254712345678"
+                  value={phoneNumber}
+                  onChange={(e) =>
+                    setPhoneNumber(e.target.value.replace(/\D/g, ""))
+                  }
+                  maxLength={12}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Format: 254XXXXXXXXX
+                </p>
               </div>
+
+              {/* Amount Selection */}
+              <div className="mb-4">
+                <label className="block text-gray-700 mb-2">Amount (KES)</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {presetAmounts.map((amt) => (
+                    <Button
+                      key={amt}
+                      type={amount === amt.toString() ? "primary" : "default"}
+                      onClick={() => setAmount(amt.toString())}
+                    >
+                      {amt.toLocaleString()}
+                    </Button>
+                  ))}
+                </div>
+                <Input
+                  placeholder="Or enter custom amount"
+                  value={presetAmounts.includes(parseInt(amount)) ? "" : amount}
+                  onChange={(e) => setAmount(e.target.value.replace(/\D/g, ""))}
+                  prefix="KES"
+                />
+              </div>
+
+              {/* Donate Button */}
+              <Button
+                type="primary"
+                size="large"
+                block
+                onClick={handleDonate}
+                loading={isDonating}
+                disabled={!phoneNumber || !amount}
+              >
+                Donate Now
+              </Button>
             </Card>
 
-            {/* Progress Section */}
+            {/* Progress Card */}
             <Card>
-              <h2 className="text-2xl font-bold mb-4">Campaign Progress</h2>
-              <div className="space-y-4">
+              <h2 className="text-2xl font-bold mb-4">Progress</h2>
+              <div className="space-y-2">
                 <div>
                   Raised:{" "}
                   <b>KES {campaign.currentAmount?.toLocaleString() || "0"}</b>
@@ -299,10 +315,6 @@ const CampaignDetails = () => {
                 <Progress
                   percent={completionPercentage}
                   status={completionPercentage >= 100 ? "success" : "active"}
-                  strokeColor={{
-                    "0%": "#108ee9",
-                    "100%": "#87d068",
-                  }}
                 />
                 {campaign.deadline && (
                   <div className="text-sm text-gray-500">
@@ -314,6 +326,45 @@ const CampaignDetails = () => {
           </div>
         </div>
       </div>
+
+      {/* Payment Status Modal */}
+      <Modal
+        title="Payment Status"
+        visible={isModalVisible}
+        onCancel={handleModalClose}
+        footer={null}
+        centered
+      >
+        <div className="text-center p-4">
+          <div className="mb-4">{getStatusIcon()}</div>
+          <h3 className="text-lg font-medium mb-2">{getStatusMessage()}</h3>
+
+          {paymentStatus === "pending" && (
+            <p className="text-gray-600">
+              Please complete the payment on your phone. We'll notify you when
+              it's processed.
+            </p>
+          )}
+
+          {paymentStatus === "success" && (
+            <p className="text-gray-600">
+              Your contribution has been recorded. Thank you!
+            </p>
+          )}
+
+          {paymentStatus === "failed" && (
+            <Button
+              type="primary"
+              onClick={() => {
+                setIsModalVisible(false);
+                setPaymentStatus(null);
+              }}
+            >
+              Try Again
+            </Button>
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };

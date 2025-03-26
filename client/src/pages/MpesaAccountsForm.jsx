@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import { Form, Input, Button, Typography, Card, message } from "antd";
 import axios from "axios";
-import { Link } from "react-router-dom";
+import { Link , useNavigate} from "react-router-dom";
 
 const { Title } = Typography;
 
 const MpesaAccountForm = () => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate()
 
   const onFinish = async (values) => {
     try {
@@ -33,6 +34,7 @@ const MpesaAccountForm = () => {
       if (response.data.success) {
         message.success("Mpesa account created successfully!");
         form.resetFields();
+        navigate('/dashboard')
       } else {
         throw new Error(response.data.message || "Failed to create Mpesa account");
       }

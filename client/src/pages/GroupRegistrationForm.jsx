@@ -1,19 +1,26 @@
-import React, { useState, useEffect } from "react";
-import {
-  Form,
-  Input,
-  InputNumber,
-  DatePicker,
-  Button,
-  List,
-  Typography,
-  Steps,
-  Card,
-  Select,
-} from "antd";
-import { PlusOutlined, ArrowRightOutlined, ArrowLeftOutlined, DeleteOutlined } from "@ant-design/icons";
-import axios from "axios";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect } from 'react';
+import { 
+  Form, 
+  Input, 
+  InputNumber, 
+  DatePicker, 
+  Button, 
+  List, 
+  Typography, 
+  Steps, 
+  Card, 
+  Select, 
+  message,
+  Spin
+} from 'antd';
+import { 
+  PlusOutlined, 
+  ArrowRightOutlined, 
+  ArrowLeftOutlined, 
+  DeleteOutlined 
+} from '@ant-design/icons';
+import axios from 'axios';
+import { useNavigate, Link } from 'react-router-dom';
 
 const { TextArea } = Input;
 const { Title } = Typography;
@@ -21,230 +28,270 @@ const { Step } = Steps;
 const { Option } = Select;
 
 const GroupRegistrationForm = () => {
+  // State management
   const [form] = Form.useForm();
   const [currentStep, setCurrentStep] = useState(0);
   const [members, setMembers] = useState([]);
   const [mpesaAccounts, setMpesaAccounts] = useState([]);
-  const [selectedMpesaAccount, setSelectedMpesaAccount] = useState(null);
-  const userId = localStorage.getItem("code");
+  const [loading, setLoading] = useState({
+    form: false,
+    mpesaAccounts: true
+  });
+  
+  const navigate = useNavigate();
+  const userId = localStorage.getItem('code');
 
-  // Fetch Mpesa accounts from the database
+  // Fetch Mpesa accounts on component mount
   useEffect(() => {
     const fetchMpesaAccounts = async () => {
       try {
-        console.log(userId);
-        const response = await axios.get(`${import.meta.env.VITE_DEV_ENDPOINT}/api/getmpesadetails?id=${userId}`);
-        console.log("API Response:", response.data.mpesaAccounts);
-
-        // Handle empty or invalid responses
-        if (!response.data) {
-          console.warn("No Mpesa accounts found");
-          setMpesaAccounts([]); // Set to an empty array
+        if (!userId) {
+          message.error('User authentication required');
           return;
         }
 
-        setMpesaAccounts(response.data.mpesaAccounts);
-        setSelectedMpesaAccount(response.data.mpesaAccounts)
+        const response = await axios.get(
+          `${import.meta.env.VITE_DEV_ENDPOINT}/api/getmpesadetails`,
+          { params: { id: userId } }
+        );
+
+        if (response.data?.success && response.data.mpesaAccounts?.length) {
+          setMpesaAccounts(response.data.mpesaAccounts);
+          // Set the first account as default selection
+          form.setFieldsValue({
+            mpesaAccount: response.data.mpesaAccounts[0]._id
+          });
+        } else {
+          message.warning('No Mpesa accounts found. Please create one first.');
+        }
       } catch (error) {
-        console.error("Error fetching Mpesa accounts:", error);
-        setMpesaAccounts([]); // Set to an empty array in case of error
+        console.error('Failed to fetch Mpesa accounts:', error);
+        message.error('Failed to load payment options');
+      } finally {
+        setLoading(prev => ({ ...prev, mpesaAccounts: false }));
       }
     };
+
     fetchMpesaAccounts();
-  }, [userId]);
+  }, [userId, form]);
 
- 
-
-  const addMember = () => {
-    setMembers([...members, { email: "" }]);
-  };
-
-  const updateMemberField = (index, field, value) => {
+  // Member management functions
+  const handleAddMember = () => setMembers([...members, { email: '' }]);
+  
+  const handleUpdateMember = (index, field, value) => {
     const updatedMembers = [...members];
     updatedMembers[index][field] = value;
     setMembers(updatedMembers);
   };
 
-  const removeMember = (index) => {
-    const updatedMembers = members.filter((_, i) => i !== index);
-    setMembers(updatedMembers);
+  const handleRemoveMember = (index) => {
+    setMembers(members.filter((_, i) => i !== index));
   };
 
+  // Form steps configuration
   const steps = [
     {
-      title: "Group Information",
+      title: 'Group Details',
       content: (
-        <>
-          {/* Group Name */}
+        <Spin spinning={loading.mpesaAccounts}>
           <Form.Item
             label="Group Name"
             name="groupName"
-            rules={[{ required: true, message: "Please enter the group name!" }]}
+            rules={[
+              { required: true, message: 'Group name is required' },
+              { min: 3, message: 'Minimum 3 characters' }
+            ]}
           >
-            <Input placeholder="Enter group name" />
+            <Input placeholder="e.g., Family Savings Group" />
           </Form.Item>
 
-          {/* Description */}
           <Form.Item
             label="Description"
             name="description"
-            rules={[{ required: true, message: "Please enter a description!" }]}
+            rules={[{ required: true, message: 'Please describe your group' }]}
           >
-            <TextArea rows={4} placeholder="Enter group description" />
+            <TextArea rows={3} placeholder="Group purpose and objectives" />
           </Form.Item>
 
-          {/* Target Amount */}
           <Form.Item
-            label="Target Amount"
+            label="Target Amount (KES)"
             name="targetAmount"
-            rules={[{ required: true, message: "Please enter the target amount!" }]}
+            rules={[
+              { required: true, message: 'Target amount is required' },
+              { type: 'number', min: 100, message: 'Minimum KES 100' }
+            ]}
           >
-            <InputNumber min={0} style={{ width: "100%" }} placeholder="Enter target amount" />
+            <InputNumber
+              min={100}
+              style={{ width: '100%' }}
+              formatter={value => `KES ${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+              parser={value => value.replace(/KES\s?|(,*)/g, '')}
+            />
           </Form.Item>
 
-          {/* Deadline (Optional) */}
-          <Form.Item label="Deadline" name="deadLine">
-            <DatePicker style={{ width: "100%" }} />
-          </Form.Item>
-
-          {/* Mpesa Account */}
           <Form.Item
-            label="Mpesa Account"
-            name="mpesaAccount"
-            rules={[{ required: true, message: "Please select an Mpesa account!" }]}
+            label="Deadline"
+            name="deadLine"
+            rules={[{ required: true, message: 'Please set a target date' }]}
           >
-            <Select
-              placeholder="Select an Mpesa account"
-              style={{ width: "100%" }}
-              onChange={(value) => setSelectedMpesaAccount(mpesaAccounts.find((acc) => acc.id === value))}
-            >
-              {mpesaAccounts.length > 0 ? (
-                mpesaAccounts.map((account, index) => (
-                  <Option key={index} value={account.id}>
-                    {account.AccountName} ({account.businessShortCode})
-                  </Option>
-                ))
-              ) : (
-                <Option disabled value="no-accounts">
-                  No Mpesa accounts found
+            <DatePicker style={{ width: '100%' }} />
+          </Form.Item>
+
+          <Form.Item
+            label="Payment Account"
+            name="mpesaAccount"
+            rules={[{ required: true, message: 'Please select a payment account' }]}
+          >
+            <Select placeholder="Select Mpesa account">
+              {mpesaAccounts.map(account => (
+                <Option key={account._id} value={account._id}>
+                  {account.AccountName} ({account.businessShortCode})
                 </Option>
-              )}
+              ))}
             </Select>
           </Form.Item>
 
-          {/* Create New Account Button */}
-          <Button type="default" style={{ marginTop: 10 }}>
-            <Link to={"/mpesaacountregistration"}>Create New Mpesa Account</Link>
+          <Button type="dashed" block>
+            <Link to="/mpesaaccountregistration">
+              <PlusOutlined /> Add New Mpesa Account
+            </Link>
           </Button>
-        </>
-      ),
+        </Spin>
+      )
     },
     {
-      title: "Invite Members (Optional)",
+      title: 'Add Members',
       content: (
         <>
           <List
             dataSource={members}
             renderItem={(member, index) => (
               <List.Item
-                key={index}
                 actions={[
                   <Button
-                    type="link"
                     danger
                     icon={<DeleteOutlined />}
-                    onClick={() => removeMember(index)}
-                  >
-                    Remove
-                  </Button>,
+                    onClick={() => handleRemoveMember(index)}
+                  />
                 ]}
               >
                 <Form.Item
-                  label="Email"
-                  rules={[{ required: true, message: "Please enter an email address!" }]}
+                  label={`Member ${index + 1}`}
+                  rules={[
+                    { required: true, message: 'Email is required' },
+                    { type: 'email', message: 'Invalid email format' }
+                  ]}
                 >
                   <Input
-                    placeholder="Enter email"
+                    placeholder="member@example.com"
                     value={member.email}
-                    onChange={(e) => updateMemberField(index, "email", e.target.value)}
+                    onChange={e => handleUpdateMember(index, 'email', e.target.value)}
                   />
                 </Form.Item>
               </List.Item>
             )}
           />
-          <Button type="dashed" onClick={addMember} icon={<PlusOutlined />}>
+          <Button 
+            type="dashed" 
+            onClick={handleAddMember}
+            icon={<PlusOutlined />}
+            block
+          >
             Add Member
           </Button>
         </>
-      ),
-    },
+      )
+    }
   ];
 
-  const onFinish =  (values) => {
-    console.log("Form Values:", {
-      ...values,
-      members,
-      createdBy: userId,
-      createdAt: new Date(),
-    });
+  // Form submission handler
+  const handleSubmit = async (values) => {
+    try {
+      setLoading(prev => ({ ...prev, form: true }));
+      console.log(values)
+      const payload = {
+        ...values,
+        targetAmount: Number(values.targetAmount),
+        deadLine: values.deadLine,
+        members: members.filter(m => m.email),
+        createdBy: userId,
+        mpesaAccountId: values.mpesaAccount
+      };
 
-    const submitForm = async () => {
-      const response = await axios.post(`${import.meta.env.VITE_DEV_ENDPOINT}/api/groupfundingregistration`, values)
+      console.log(payload)
+      const response = await axios.post(
+        `${import.meta.env.VITE_DEV_ENDPOINT}/api/groupfundingregistration`,
+        payload
+      );
 
-      if(response.status === 200) {
-        
+      if (response.data.success) {
+        message.success('Group created successfully!');
+        form.resetFields();
+        setMembers([]);
+        navigate('/dashboard');
+      } else {
+        throw new Error(response.data.message || 'Registration failed');
       }
-
-    }
-    alert("Group registration submitted successfully!");
-    form.resetFields();
-    setMembers([]);
-    setCurrentStep(0);
-    setSelectedMpesaAccount(null);
-  };
-
-  const nextStep = () => {
-    if (currentStep === 0) {
-      form
-        .validateFields()
-        .then(() => setCurrentStep(currentStep + 1))
-        .catch((err) => console.log("Validation failed:", err));
-    } else {
-      setCurrentStep(currentStep + 1);
+    } catch (error) {
+      console.error('Submission error:', error);
+      message.error(error.response?.data?.message || error.message);
+    } finally {
+      setLoading(prev => ({ ...prev, form: false }));
     }
   };
 
-  const prevStep = () => {
-    setCurrentStep(currentStep - 1);
+  // Step navigation
+  const handleNextStep = () => {
+    form.validateFields()
+      .then(() => setCurrentStep(currentStep + 1))
+      .catch(err => console.log('Validation errors:', err));
   };
+
+  const handlePrevStep = () => setCurrentStep(currentStep - 1);
 
   return (
-    <div style={{ maxWidth: 800, margin: "0 auto", padding: "20px" }}>
-      <Title level={2}>Group Registration Form</Title>
-      <Steps current={currentStep} style={{ marginBottom: 20 }}>
+    <div style={{ maxWidth: 800, margin: '0 auto', padding: 24 }}>
+      <Title level={2} style={{ textAlign: 'center', marginBottom: 24 }}>
+        Create New Group
+      </Title>
+      
+      <Steps current={currentStep} style={{ marginBottom: 32 }}>
         {steps.map((step, index) => (
           <Step key={index} title={step.title} />
         ))}
       </Steps>
 
       <Card>
-        <Form form={form} layout="vertical" onFinish={onFinish}>
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+          initialValues={{ targetAmount: 1000 }}
+        >
           {steps[currentStep].content}
 
-          <div style={{ marginTop: 20, textAlign: "right" }}>
+          <div style={{ marginTop: 32, display: 'flex', justifyContent: 'space-between' }}>
             {currentStep > 0 && (
-              <Button style={{ marginRight: 8 }} onClick={prevStep} icon={<ArrowLeftOutlined />}>
+              <Button onClick={handlePrevStep} icon={<ArrowLeftOutlined />}>
                 Previous
               </Button>
             )}
-            {currentStep < steps.length - 1 && (
-              <Button type="primary" onClick={nextStep} icon={<ArrowRightOutlined />}>
+            
+            {currentStep < steps.length - 1 ? (
+              <Button 
+                type="primary" 
+                onClick={handleNextStep}
+                icon={<ArrowRightOutlined />}
+              >
                 Next
               </Button>
-            )}
-            {currentStep === steps.length - 1 && (
-              <Button type="primary" htmlType="submit">
-                Submit
+            ) : (
+              <Button 
+                type="primary" 
+                htmlType="submit"
+                loading={loading.form}
+              >
+                Create Group
               </Button>
             )}
           </div>

@@ -2,10 +2,11 @@ const router = require('express').Router()
 const { GroupFunding } = require("../models/GroupFundingSchema.model")
 
 router.post('/', async (req, res) => {
-    const groupData = req.body
+    const  { groupName, description, targetAmount, deadline, mpesaAccount, member, createdBy}= req.body
+    console.log(groupName, description, targetAmount, deadline, mpesaAccount, member)
 
     try {
-        const groupFunding = new GroupFunding({groupData})
+        const groupFunding = new GroupFunding({groupName, description, targetAmount, deadline, mpesaAccount, member, createdBy})
         
         await groupFunding.save()
 
