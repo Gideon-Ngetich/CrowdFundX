@@ -25,7 +25,7 @@ const Dashboard = () => {
   const [myCampaigns, setMyCampaigns] = useState([]);
   const [error, setError] = useState("");
 
-  const token = localStorage.getItem("token");
+  const token = localStorage.getItem("at");
   const userId = localStorage.getItem("code");
   const { setCampaigns } = useCampaigns();
 

@@ -30,7 +30,7 @@ const groupFundingSchema = new mongoose.Schema({
     },
     member: [
         {
-            userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true},
+            // userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true},
             email: { type: String, required: true},
             phoneNumber: { type: String},
             totalContributed: { type: Number, default: 0},
@@ -43,7 +43,7 @@ const groupFundingSchema = new mongoose.Schema({
             ],
             status: {
                 type: String,
-                enum: [ "pending", "Accepted", "Declined"],
+                enum: [ "Pending", "Accepted", "Declined"],
                 default: "Pending"
             },
             default: []

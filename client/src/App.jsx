@@ -23,7 +23,7 @@ function App() {
       <Route path="/campaign/:id" element={<CampaignDetails />} />
       <Route path="/dashboard/:id" element={<CrowdCampaignDetails />} />
       <Route path="/dashboard/accountselection/groupfundingregistration" element={<GroupRegistrationForm />} />
-      <Route path="/mpesaacountregistration" element={<MpesaAccountForm />} />
+      <Route path="/accountregistration" element={<MpesaAccountForm />} />
       <Route path="/dashboard/accountselection" element={<AccountTypeSelection />} />
 
     </Routes>
