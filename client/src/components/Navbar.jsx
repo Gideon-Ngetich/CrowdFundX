@@ -54,7 +54,7 @@ export default function Navbar() {
         {({ open }) => (
           <div
             className={`w-full flex items-center py-4 ${scrolling ? "bg-white" : "bg-none"
-              } fixed justify-between px-2 z-20 h-fit bg-slate-100`}
+              }  justify-between px-2 -z-10 h-fit bg-slate-100`}
           >
             <div className="w-full h-full item flex justify-between mx-auto max-w-[1600px] lg:pl-[0px] md:pl-[16px] pl-[16px]">
               <div className="flex items-center lg:h-[50px] w-1/4">

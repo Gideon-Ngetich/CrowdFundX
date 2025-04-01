@@ -20,6 +20,7 @@ const crowdFundingSchema = new mongoose.Schema({
     },
     currentAmount: {
         type: Number,
+        default: 0
     },
     deadLine: {
         type: Date,

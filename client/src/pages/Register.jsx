@@ -8,6 +8,7 @@ const Register = () => {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState('')
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [passwordMatch, setPasswordMatch] = useState(true);
@@ -31,6 +32,7 @@ const Register = () => {
         firstName,
         lastName,
         email,
+        phoneNumber,
         password,
         confirmPassword,
       };
@@ -120,6 +122,19 @@ const Register = () => {
             ]}
           >
             <Input onChange={(e) => setEmail(e.target.value)} value={email} />
+          </Form.Item>
+
+          <Form.Item
+            label="Phone Number"
+            name="phoneNumber"
+            rules={[
+              {
+                required: true,
+                message: "Please input your phone number!",
+              },
+            ]}
+          >
+            <Input onChange={(e) => setPhoneNumber(e.target.value)} value={phoneNumber} />
           </Form.Item>
 
           <Form.Item

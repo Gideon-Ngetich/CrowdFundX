@@ -3,7 +3,7 @@ const { MpesaAccountDetails } = require('../models/MpesaAccountDetails.model')
 
 router.get('/', async (req, res) => {
     const { id } = req.query;
-    console.log(id)
+    console.log({'id2': id})
 
     try{ 
         const mpesaAccounts = await MpesaAccountDetails.find({"userId": id}, {_id: 1, AccountName: 1, businessShortCode: 1})

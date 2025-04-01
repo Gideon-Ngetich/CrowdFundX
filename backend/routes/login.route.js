@@ -72,7 +72,7 @@ const verifyToken = (req, res, next) => {
 }
 
 router.get('/api/protected', verifyToken, (req, res) => {
-    res.json({ message: 'Access granted', userId: req.userId, accessToken: req.cookies.accessToken });
+    res.json({ message: 'Access granted', userId: req.userId, accessToken: req.cookies.accessToken, email:req.email });
 });
 
 module.exports = router;

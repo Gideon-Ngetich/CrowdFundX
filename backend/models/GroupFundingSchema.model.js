@@ -30,10 +30,11 @@ const groupFundingSchema = new mongoose.Schema({
     },
     member: [
         {
-            // userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true},
+            userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User'},
             email: { type: String, required: true},
             phoneNumber: { type: String},
             totalContributed: { type: Number, default: 0},
+            inviteToken: { type: String},
             transactions: [
                 {
                     transactionId: String,

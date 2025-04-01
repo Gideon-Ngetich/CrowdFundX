@@ -11,6 +11,11 @@ import GroupRegistrationForm from "./pages/GroupRegistrationForm";
 import MpesaAccountForm from "./pages/MpesaAccountsForm";
 import CampaignDetails from "./pages/CrowdFundingDetails";
 import AccountTypeSelection from "./pages/AccountTypeSelection";
+import AdminChamaDashboard from "./pages/ChamaDashboard"
+import ChamaDetails from "./pages/ChamaAdminDetails";
+import CrowdFundingRegistration from './pages/CrowdFundRegForm'
+import GroupFundingDashboard from './pages/GroupFundingDetails'
+import ChamaRegistratonForm from './pages/ChamaRegistratoion'
 
 function App() {
   return (
@@ -25,6 +30,12 @@ function App() {
       <Route path="/dashboard/accountselection/groupfundingregistration" element={<GroupRegistrationForm />} />
       <Route path="/accountregistration" element={<MpesaAccountForm />} />
       <Route path="/dashboard/accountselection" element={<AccountTypeSelection />} />
+      <Route path="/dashboard/accountselection/crowdfundingregistration" element={<CrowdFundingRegistration />} />
+      <Route path="/dashboard/chama/:id" element={<ChamaDetails />} />
+      <Route path="/dashboard/groups/:id" element={<GroupFundingDashboard />} />
+      <Route path="/dashboard/accountselection/chamaregistration" element={<ChamaRegistratonForm />} />
+
+
 
     </Routes>
 

@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs')
 
 router.post('/', async (req, res) => {
     try{
-        const { firstName, lastName, email, password } = req.body
+        const { firstName, lastName, email, phoneNumber, password } = req.body
         console.log(firstName, lastName, email, password)
 
         const salt = await bcrypt.genSalt(10)
@@ -21,6 +21,7 @@ router.post('/', async (req, res) => {
         firstName,
         lastName,
         email,
+        phoneNumber,
         password: hashed_password,
     })
 

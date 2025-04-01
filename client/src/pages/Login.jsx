@@ -40,6 +40,7 @@ const Login = () => {
           response.data;
         localStorage.setItem("code", userId);
         localStorage.setItem("at", accessToken);
+        localStorage.setItem("email", email)
         console.log("Login successful");
         navigateTo("/dashboard");
       }
