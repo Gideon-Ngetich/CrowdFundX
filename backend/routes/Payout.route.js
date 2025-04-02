@@ -8,8 +8,7 @@ router.post('/:id/process-payout', async (req, res) => {
 
   try {
     const group = await ChamaGroup.findById(req.params.id)
-      .populate('rotationOrder');
-
+    console.log(group)
     if (!group) {
       return res.status(404).json({
         success: false,
@@ -22,8 +21,9 @@ router.post('/:id/process-payout', async (req, res) => {
     const contributionCount = await ChamaContribution.countDocuments({
       group: group._id,
       cycleNumber: group.currentCycle,
-      status: 'completed'
+      // status: 'completed'
     });
+    console.log({"Contribution count": contributionCount})
 
     if (contributionCount < memberCount) {
       console.error('Cannot process payout - pending contributions')

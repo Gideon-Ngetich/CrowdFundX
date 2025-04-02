@@ -19,7 +19,9 @@ import {
   Input,
   InputNumber,
   notification,
-  Alert
+  Alert,
+  Typography,
+  Popconfirm
 } from 'antd';
 import { 
   UserOutlined, 
@@ -30,7 +32,9 @@ import {
   SyncOutlined,
   DollarOutlined,
   HistoryOutlined,
-  PlusOutlined
+  PlusOutlined,
+  ArrowRightOutlined,
+  DeleteOutlined
 } from '@ant-design/icons';
 import { 
   PieChart, 
@@ -50,10 +54,12 @@ import {
 import axios from 'axios';
 import dayjs from 'dayjs';
 
+const { Title, Text } = Typography;
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
 const ChamaDashboard = () => {
   const { id } = useParams();
+  const userId = localStorage.getItem('code')
   const [loading, setLoading] = useState(true);
   const [chama, setChama] = useState(null);
   const [contributions, setContributions] = useState([]);
@@ -65,8 +71,6 @@ const ChamaDashboard = () => {
   const [contributeModalVisible, setContributeModalVisible] = useState(false);
   const [form] = Form.useForm();
   const [contributionForm] = Form.useForm();
-
-  // For phone number search
   const [phoneNumber, setPhoneNumber] = useState('');
   const [memberOptions, setMemberOptions] = useState([]);
   const [searching, setSearching] = useState(false);
@@ -75,14 +79,12 @@ const ChamaDashboard = () => {
   const fetchChamaData = async () => {
     try {
       setLoading(true);
-      
-      const [chamaRes, membersRes, contributionsRes, payoutsRes] = await Promise.all([
+      const [chamaRes, membersRes, contributionsRes] = await Promise.all([
         axios.get(`${import.meta.env.VITE_DEV_ENDPOINT}/api/getchamabyid?id=${id}`),
         axios.get(`${import.meta.env.VITE_DEV_ENDPOINT}/api/group?id=${id}`),
         axios.get(`${import.meta.env.VITE_DEV_ENDPOINT}/api/chamacontribution?id=${id}`),
-        // axios.get(`${import.meta.env.VITE_DEV_ENDPOINT}/api/payouthistory?group=${id}`)
       ]);
-
+      console.log({"chama": chamaRes})
       const membersWithUsers = await Promise.all(
         membersRes.data.map(async member => {
           try {
@@ -90,15 +92,17 @@ const ChamaDashboard = () => {
               `${import.meta.env.VITE_DEV_ENDPOINT}/api/userinfo?id=${member.user._id}`
             );
 
+            console.log(contributionsRes)
             return { 
               ...member, 
               user: userRes.data,
               hasPaid: contributionsRes.data.some(
                 c => c.member._id === member._id && c.cycleNumber === chamaRes.data.currentCycle
               )
+              
             };
           } catch (error) {
-            console.error("Failed to fetch user:", member.user, error);
+            console.error("Failed to fetch user:", error);
             return { 
               ...member, 
               user: { firstName: "Unknown", lastName: "User", phoneNumber: "N/A" },
@@ -107,8 +111,6 @@ const ChamaDashboard = () => {
           }
         })
       );
-
-      // Determine next recipient
       const rotationOrder = chamaRes.data.rotationOrder || [];
       const currentRecipientIndex = chamaRes.data.currentRecipientIndex || 0;
       const nextRecipientId = rotationOrder[currentRecipientIndex % rotationOrder.length];
@@ -117,8 +119,9 @@ const ChamaDashboard = () => {
       setChama(chamaRes.data);
       setMembers(membersWithUsers);
       setContributions(contributionsRes.data);
-      setPayoutHistory(payoutsRes.data);
       setNextRecipient(nextRecipientData);
+      setPayoutHistory(chamaRes.data.previousRecipients || []);
+
       
     } catch (err) {
       console.error("API Error:", err);
@@ -138,12 +141,10 @@ const ChamaDashboard = () => {
         `${import.meta.env.VITE_DEV_ENDPOINT}/api/${id}/process-payout`,
         { groupId: id }
       );
-
       notification.success({
         message: 'Payout Processed',
         description: `KES ${response.data.amount} paid to ${response.data.recipient.name}`
       });
-
       await fetchChamaData();
     } catch (error) {
       console.error('Payout error:', error);
@@ -163,12 +164,10 @@ const ChamaDashboard = () => {
         group: id,
         phoneNumber: values.phoneNumber
       });
-      
       notification.success({
         message: 'Member Added',
         description: 'New member successfully added to the chama'
       });
-      
       setAddMemberModalVisible(false);
       form.resetFields();
       fetchChamaData();
@@ -181,25 +180,38 @@ const ChamaDashboard = () => {
     }
   };
 
+  const handleDeleteMember = async (memberId) => {
+    try {
+      await axios.delete(`${import.meta.env.VITE_DEV_ENDPOINT}/api/members/${memberId}`);
+      notification.success({
+        message: 'Member Removed',
+        description: 'Member has been successfully removed from the group'
+      });
+      fetchChamaData();
+    } catch (error) {
+      console.error('Delete member error:', error);
+      notification.error({
+        message: 'Failed to Remove Member',
+        description: error.response?.data?.message || 'Could not remove member'
+      });
+    }
+  };
+
   const handleContribute = async (values) => {
     try {
-      await axios.post(`${import.meta.env.VITE_DEV_ENDPOINT}/api/contribute`, {
+      await axios.post(`${import.meta.env.VITE_DEV_ENDPOINT}/api/chamastk`, {
+        userId: localStorage.getItem('code'),
         memberId: values.memberId,
         groupId: id,
         amount: values.amount
       });
-      
       notification.success({
         message: 'Contribution Recorded',
         description: `KES ${values.amount} contribution successfully recorded`
       });
-      
       setContributeModalVisible(false);
-      setPhoneNumber('');
-      setMemberOptions([]);
-      setSelectedMember(null);
       contributionForm.resetFields();
-      fetchChamaData();
+      fetchChamaData(); // Uncomment this to refresh data after contribution
     } catch (error) {
       console.error('Contribution error:', error);
       notification.error({
@@ -209,34 +221,34 @@ const ChamaDashboard = () => {
     }
   };
 
-  const handlePhoneNumberSearch = async (value) => {
-    setPhoneNumber(value);
-    if (value.length >= 4) {
-      setSearching(true);
-      try {
-        const response = await axios.get(
-          `${import.meta.env.VITE_DEV_ENDPOINT}/api/searchmember?phone=${value}&group=${id}`
-        );
-        setMemberOptions(response.data);
-      } catch (error) {
-        console.error('Search error:', error);
-        notification.error({
-          message: 'Search Failed',
-          description: 'Could not search for members'
-        });
-      } finally {
-        setSearching(false);
-      }
-    }
-  };
+  // const handlePhoneNumberSearch = async (value) => {
+  //   setPhoneNumber(value);
+  //   if (value.length >= 4) {
+  //     setSearching(true);
+  //     try {
+  //       const response = await axios.get(
+  //         `${import.meta.env.VITE_DEV_ENDPOINT}/api/searchmember?phone=${value}&group=${id}`
+  //       );
+  //       setMemberOptions(response.data);
+  //     } catch (error) {
+  //       console.error('Search error:', error);
+  //       notification.error({
+  //         message: 'Search Failed',
+  //         description: 'Could not search for members'
+  //       });
+  //     } finally {
+  //       setSearching(false);
+  //     }
+  //   }
+  // };
 
-  const handleMemberSelect = (member) => {
-    setSelectedMember(member);
-    contributionForm.setFieldsValue({ 
-      memberId: member._id,
-      phoneNumber: member.phoneNumber 
-    });
-  };
+  // const handleMemberSelect = (member) => {
+  //   setSelectedMember(member);
+  //   contributionForm.setFieldsValue({ 
+  //     memberId: member._id,
+  //     phoneNumber: member.phoneNumber 
+  //   });
+  // };
 
   useEffect(() => {
     fetchChamaData();
@@ -272,6 +284,9 @@ const ChamaDashboard = () => {
   const paymentPercentage = totalMembers > 0 
     ? Math.round((paidCount / totalMembers) * 100) 
     : 0;
+  const currentCycleTotal = currentCycleContributions.reduce(
+    (sum, c) => sum + c.amount, 0
+  );
 
   // Chart data
   const paymentData = [
@@ -301,9 +316,132 @@ const ChamaDashboard = () => {
       .reduce((sum, c) => sum + c.amount, 0)
   }));
 
-  // Calculate total contributions for current cycle
-  const currentCycleTotal = currentCycleContributions.reduce(
-    (sum, c) => sum + c.amount, 0
+  const NextRecipientCard = () => (
+    <Card 
+      title="Next Payout Recipient" 
+      style={{ marginBottom: 24 }}
+      extra={
+        paymentPercentage === 100 && (
+          <Button 
+            type="primary" 
+            icon={<DollarOutlined />}
+            loading={isProcessingPayout}
+            onClick={handleProcessPayout}
+          >
+            Process Payout
+          </Button>
+        )
+      }
+    >
+      {nextRecipient ? (
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 16 }}>
+            <Avatar 
+              size={64} 
+              src={nextRecipient.user?.photo} 
+              icon={<UserOutlined />}
+              style={{ marginRight: 16 }}
+            />
+            <div>
+              <Title level={4} style={{ marginBottom: 0 }}>
+                {nextRecipient.user?.firstName} {nextRecipient.user?.lastName}
+              </Title>
+              <Text type="secondary">{nextRecipient.user?.phoneNumber}</Text>
+            </div>
+          </div>
+          
+          <Divider />
+          
+          <Row gutter={16}>
+            <Col span={8}>
+              <Statistic
+                title="Payout Amount"
+                value={currentCycleTotal}
+                prefix="KES"
+              />
+            </Col>
+            <Col span={8}>
+              <Statistic
+                title="Current Cycle"
+                value={currentCycle}
+              />
+            </Col>
+            <Col span={8}>
+              <Statistic
+                title="Position in Rotation"
+                value={`${(chama.currentRecipientIndex || 0) + 1} of ${chama.rotationOrder?.length || 0}`}
+              />
+            </Col>
+          </Row>
+          
+          {paymentPercentage < 100 && (
+            <Alert
+              message="Payout Not Ready"
+              description={`Waiting for ${totalMembers - paidCount} more members to contribute (${paymentPercentage}% complete)`}
+              type="warning"
+              showIcon
+              style={{ marginTop: 16 }}
+            />
+          )}
+        </div>
+      ) : (
+        <Alert
+          message="No Next Recipient"
+          description="The rotation order has not been set up yet"
+          type="info"
+          showIcon
+        />
+      )}
+    </Card>
+  );
+
+  const RotationOrderTable = () => (
+    <Card title="Rotation Order" style={{ marginTop: 24 }}>
+      <Table
+        columns={[
+          {
+            title: 'Position',
+            dataIndex: 'position',
+            key: 'position',
+            render: (_, __, index) => index + 1
+          },
+          {
+            title: 'Member',
+            key: 'member',
+            render: (memberId) => {
+              const member = members.find(m => m._id === memberId);
+              return member ? (
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <Avatar 
+                    src={member.user?.photo} 
+                    icon={<UserOutlined />}
+                    style={{ marginRight: 8 }}
+                  />
+                  <span>
+                    {member.user?.firstName} {member.user?.lastName}
+                  </span>
+                </div>
+              ) : 'Unknown Member';
+            }
+          },
+          {
+            title: 'Status',
+            key: 'status',
+            render: (memberId) => {
+              const isCurrent = chama.rotationOrder?.indexOf(memberId) === chama.currentRecipientIndex;
+              return isCurrent ? (
+                <Tag icon={<ArrowRightOutlined />} color="blue">Current</Tag>
+              ) : (
+                <Tag color="default">Pending</Tag>
+              );
+            }
+          }
+        ]}
+        dataSource={chama.rotationOrder || []}
+        rowKey={(memberId) => memberId}
+        pagination={false}
+      />
+    </Card>
   );
 
   return (
@@ -343,13 +481,9 @@ const ChamaDashboard = () => {
         visible={contributeModalVisible}
         onCancel={() => {
           setContributeModalVisible(false);
-          setPhoneNumber('');
-          setMemberOptions([]);
-          setSelectedMember(null);
           contributionForm.resetFields();
         }}
         onOk={() => contributionForm.submit()}
-        okButtonProps={{ disabled: !selectedMember }}
       >
         <Form
           form={contributionForm}
@@ -357,7 +491,7 @@ const ChamaDashboard = () => {
           onFinish={handleContribute}
           initialValues={{ amount: chama.cycleAmount }}
         >
-          <Form.Item
+          {/* <Form.Item
             name="phoneNumber"
             label="Member Phone Number"
             rules={[{ required: true, message: 'Please select a member' }]}
@@ -369,9 +503,9 @@ const ChamaDashboard = () => {
               enterButton
               loading={searching}
             />
-          </Form.Item>
+          </Form.Item> */}
 
-          {memberOptions.length > 0 && (
+          {/* {memberOptions.length > 0 && (
             <div style={{ marginBottom: 16 }}>
               <h4>Select Member:</h4>
               <Space direction="vertical" style={{ width: '100%' }}>
@@ -410,10 +544,9 @@ const ChamaDashboard = () => {
             />
           )}
 
-          {/* Hidden field to store member ID */}
           <Form.Item name="memberId" hidden>
             <Input />
-          </Form.Item>
+          </Form.Item> */}
 
           <Form.Item
             name="amount"
@@ -492,145 +625,147 @@ const ChamaDashboard = () => {
           </Col>
         </Row>
 
-        {/* Action Buttons */}
-        <Row gutter={16} style={{ marginTop: 16 }}>
-          <Col>
-            <Button 
-              type="primary" 
-              icon={<PlusOutlined />}
-              onClick={() => setAddMemberModalVisible(true)}
-            >
-              Add Member
-            </Button>
+        {/* Charts Row */}
+        <Row gutter={[16, 16]} style={{ marginTop: 24, marginBottom: 24 }}>
+          <Col xs={24} lg={8}>
+            <Card title="Payment Status">
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={paymentData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                  >
+                    {paymentData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => [`${value} members`]} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </Card>
           </Col>
-          <Col>
-            <Button 
-              type="default" 
-              icon={<MoneyCollectOutlined />}
-              onClick={() => setContributeModalVisible(true)}
-            >
-              Record Contribution
-            </Button>
+
+          <Col xs={24} lg={8}>
+            <Card title="Contribution Trend">
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={contributionTrendData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" />
+                  <YAxis />
+                  <Tooltip formatter={(value) => [`KES ${value}`]} />
+                  <Legend />
+                  <Line 
+                    type="monotone" 
+                    dataKey="amount" 
+                    name="Amount" 
+                    stroke="#8884d8" 
+                    activeDot={{ r: 8 }} 
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </Card>
+          </Col>
+
+          <Col xs={24} lg={8}>
+            <Card title="Top Contributors">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart 
+                  data={memberContributionData.sort((a, b) => b.amount - a.amount).slice(0, 5)}
+                  layout="vertical"
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" />
+                  <YAxis dataKey="name" type="category" width={80} />
+                  <Tooltip formatter={(value) => [`KES ${value}`]} />
+                  <Legend />
+                  <Bar dataKey="amount" name="Amount" fill="#82ca9d" />
+                </BarChart>
+              </ResponsiveContainer>
+            </Card>
           </Col>
         </Row>
 
-        {/* Payout Action Card */}
-        {paymentPercentage === 100 && (
-          <Card 
-            title="Payout Management" 
-            style={{ marginTop: 16 }}
-            headStyle={{ backgroundColor: '#f6ffed', borderColor: '#b7eb8f' }}
+        {/* Action Buttons */}
+        <Space style={{ marginTop: 16 }}>
+          <Button 
+            type="primary" 
+            icon={<PlusOutlined />}
+            onClick={() => setAddMemberModalVisible(true)}
           >
-            <Row align="middle" gutter={16}>
-              <Col flex="auto">
-                <Space>
-                  <Avatar 
-                    size="large" 
-                    src={nextRecipient?.user?.photo}
-                    icon={<UserOutlined />}
-                  />
-                  <div>
-                    <h4 style={{ margin: 0 }}>
-                      {nextRecipient?.user?.firstName} {nextRecipient?.user?.lastName}
-                    </h4>
-                    <p style={{ margin: 0, color: '#666' }}>
-                      {nextRecipient?.user?.phoneNumber}
-                    </p>
-                  </div>
-                  <Divider type="vertical" />
-                  <Statistic
-                    title="Payout Amount"
-                    value={currentCycleTotal}
-                    prefix="KES"
-                    valueStyle={{ fontSize: 24 }}
-                  />
-                </Space>
-              </Col>
-              <Col>
-                <Button 
-                  type="primary" 
-                  size="large"
-                  icon={<DollarOutlined />}
-                  loading={isProcessingPayout}
-                  onClick={handleProcessPayout}
-                >
-                  Process Payout
-                </Button>
-              </Col>
-            </Row>
-          </Card>
-        )}
+            Add Member
+          </Button>
+          <Button 
+            icon={<MoneyCollectOutlined />}
+            onClick={() => setContributeModalVisible(true)}
+          >
+            Record Contribution
+          </Button>
+        </Space>
       </Card>
 
-      {/* Charts Row */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} lg={8}>
-          <Card title="Payment Status">
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={paymentData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                >
-                  {paymentData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => [`${value} members`]} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+      <Tabs defaultActiveKey="payouts">
+        <Tabs.TabPane tab="Payout Management" key="payouts">
+          <NextRecipientCard />
+          <RotationOrderTable />
+          
+          <Card title="Payout History" style={{ marginTop: 24 }}>
+            <Table
+              columns={[
+                {
+                  title: 'Cycle',
+                  dataIndex: 'cycleNumber',
+                  key: 'cycle',
+                  sorter: (a, b) => a.cycleNumber - b.cycleNumber,
+                  defaultSortOrder: 'descend'
+                },
+                {
+                  title: 'Recipient',
+                  key: 'recipient',
+                  render: (record) => {
+                    const member = members.find(m => m._id === record.member);
+                    return member ? (
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        <Avatar 
+                          src={member.user?.photo} 
+                          icon={<UserOutlined />}
+                          style={{ marginRight: 8 }}
+                        />
+                        <span>
+                          {member.user?.firstName} {member.user?.lastName}
+                        </span>
+                      </div>
+                    ) : 'Unknown Member';
+                  }
+                },
+                { 
+                  title: 'Amount (KES)', 
+                  dataIndex: 'amount', 
+                  key: 'amount',
+                  render: (amount) => `KES ${amount.toLocaleString()}`
+                },
+                { 
+                  title: 'Date', 
+                  dataIndex: 'payoutDate', 
+                  key: 'date',
+                  render: (date) => dayjs(date).format('MMM D, YYYY'),
+                  sorter: (a, b) => new Date(a.payoutDate) - new Date(b.payoutDate)
+                },
+              ]}
+              dataSource={payoutHistory}
+              rowKey="_id"
+              pagination={{ pageSize: 5 }}
+            />
           </Card>
-        </Col>
+        </Tabs.TabPane>
 
-        <Col xs={24} lg={8}>
-          <Card title="Contribution Trend">
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={contributionTrendData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip formatter={(value) => [`KES ${value}`]} />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="amount" 
-                  name="Amount" 
-                  stroke="#8884d8" 
-                  activeDot={{ r: 8 }} 
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </Card>
-        </Col>
-
-        <Col xs={24} lg={8}>
-          <Card title="Top Contributors">
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart 
-                data={memberContributionData.sort((a, b) => b.amount - a.amount).slice(0, 5)}
-                layout="vertical"
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis dataKey="name" type="category" width={80} />
-                <Tooltip formatter={(value) => [`KES ${value}`]} />
-                <Legend />
-                <Bar dataKey="amount" name="Amount" fill="#82ca9d" />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
-        </Col>
-      </Row>
-
-      <Tabs defaultActiveKey="1">
-        <Tabs.TabPane tab="Members" key="1">
+        <Tabs.TabPane tab="Members" key="members">
           <Card>
             <Table
               columns={[
@@ -685,17 +820,22 @@ const ChamaDashboard = () => {
                   }
                 },
                 {
-                  title: 'Last Received',
-                  key: 'lastReceived',
-                  render: (_, record) => {
-                    const lastPayout = payoutHistory
-                      .filter(p => p.recipient._id === record._id)
-                      .sort((a, b) => b.cycleNumber - a.cycleNumber)[0];
-                    
-                    return lastPayout 
-                      ? `Cycle ${lastPayout.cycleNumber} (KES ${lastPayout.amount})`
-                      : 'Never';
-                  }
+                  title: 'Action',
+                  key: 'action',
+                  render: (_, record) => (
+                    <Popconfirm
+                      title="Are you sure you want to remove this member?"
+                      onConfirm={() => handleDeleteMember(record._id)}
+                      okText="Yes"
+                      cancelText="No"
+                    >
+                      <Button 
+                        type="text" 
+                        icon={<DeleteOutlined />} 
+                        danger
+                      />
+                    </Popconfirm>
+                  ),
                 }
               ]}
               dataSource={members}
@@ -705,7 +845,7 @@ const ChamaDashboard = () => {
           </Card>
         </Tabs.TabPane>
 
-        <Tabs.TabPane tab="Contributions" key="2">
+        <Tabs.TabPane tab="Contributions" key="contributions">
           <Card>
             <Table
               columns={[
@@ -745,53 +885,6 @@ const ChamaDashboard = () => {
                 },
               ]}
               dataSource={contributions}
-              rowKey="_id"
-              pagination={{ pageSize: 5 }}
-            />
-          </Card>
-        </Tabs.TabPane>
-
-        <Tabs.TabPane tab="Payout History" key="3">
-          <Card>
-            <Table
-              columns={[
-                {
-                  title: 'Cycle',
-                  dataIndex: 'cycleNumber',
-                  key: 'cycle',
-                  sorter: (a, b) => a.cycleNumber - b.cycleNumber
-                },
-                {
-                  title: 'Recipient',
-                  dataIndex: 'recipient',
-                  key: 'recipient',
-                  render: (recipient) => (
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                      <Avatar 
-                        style={{ marginRight: 8 }} 
-                        src={recipient.user?.photo}
-                      >
-                        {recipient.user?.firstName?.charAt(0)}{recipient.user?.lastName?.charAt(0)}
-                      </Avatar>
-                      <span>{recipient.user?.firstName} {recipient.user?.lastName}</span>
-                    </div>
-                  )
-                },
-                { 
-                  title: 'Amount (KES)', 
-                  dataIndex: 'amount', 
-                  key: 'amount',
-                  render: (amount) => `KES ${amount.toLocaleString()}`
-                },
-                { 
-                  title: 'Date', 
-                  dataIndex: 'payoutDate', 
-                  key: 'date',
-                  render: (date) => dayjs(date).format('MMM D, YYYY'),
-                  sorter: (a, b) => new Date(a.payoutDate) - new Date(b.payoutDate)
-                },
-              ]}
-              dataSource={payoutHistory}
               rowKey="_id"
               pagination={{ pageSize: 5 }}
             />

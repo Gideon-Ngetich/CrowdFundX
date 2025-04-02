@@ -16,6 +16,7 @@ import ChamaDetails from "./pages/ChamaAdminDetails";
 import CrowdFundingRegistration from './pages/CrowdFundRegForm'
 import GroupFundingDashboard from './pages/GroupFundingDetails'
 import ChamaRegistratonForm from './pages/ChamaRegistratoion'
+import AboutPage from "./pages/About";
 
 function App() {
   return (
@@ -34,7 +35,7 @@ function App() {
       <Route path="/dashboard/chama/:id" element={<ChamaDetails />} />
       <Route path="/dashboard/groups/:id" element={<GroupFundingDashboard />} />
       <Route path="/dashboard/accountselection/chamaregistration" element={<ChamaRegistratonForm />} />
-
+      <Route path="/about-us" element={<AboutPage />} />
 
 
     </Routes>

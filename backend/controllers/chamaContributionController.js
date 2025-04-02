@@ -6,17 +6,20 @@ const axios = require('axios')
 
 exports.initiateContribution = async (req, res) => {
   try {
-    const { memberId, groupId, amount } = req.body;
+    const { memberId, groupId, amount, userId } = req.body;
 
     // Get group with current cycle
     const group = await ChamaGroup.findById(groupId);
     if (!group) return res.status(404).json({ error: 'Group not found' });
+    console.log({"userId": userId})
 
     // Verify member belongs to group
     const member = await ChamaMember.findOne({
       _id: memberId,
       group: groupId
     });
+
+    console.log({"Mmbers": member})
     if (!member) return res.status(404).json({ error: 'Member not found in this group' });
 
     // Check if member already contributed this cycle
@@ -68,6 +71,7 @@ exports.initiateContribution = async (req, res) => {
     // Save contribution with current cycle
     const contribution = new ChamaContribution({
       member: memberId,
+      user: userId,
       group: groupId,
       amount,
       cycleNumber: group.currentCycle, // This is the key addition

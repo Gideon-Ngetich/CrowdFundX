@@ -17,7 +17,6 @@ router.post("/createchama", async (req, res) => {
 
 router.get("/getchama", async (req, res) => {
   const {userId} = req.query
-    console.log(userId)
     try{
       const chamas = await ChamaGroup.find({"createdBy": userId})
 
@@ -36,7 +35,7 @@ router.get('/getchamabyid', async (req, res) => {
     const { id } = req.query;
     try {
       const chama = await ChamaGroup.findById({"_id": id})
-
+      console.log({"chama": chama})
       if(!chama) {
         return res.status(404).json("Chama not found")
       }

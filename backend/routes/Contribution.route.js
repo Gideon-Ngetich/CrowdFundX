@@ -14,8 +14,8 @@ router.get('/chamacontribution', async (req, res) => {
     const contributions = await ChamaContribution.find({ 
       group: id 
     }).populate('member');
-    console.log(contributions)
-    res.json(contributions);
+    res.json(contributions.member);
+    console.log({"Contributions": contributions})
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -33,5 +33,7 @@ router.get('/:id/status', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+
 
 module.exports = router;

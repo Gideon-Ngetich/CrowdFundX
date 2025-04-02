@@ -1,7 +1,8 @@
 const mongoose = require("mongoose");
 
 const ContributionSchema = new mongoose.Schema({
-  member: { type: mongoose.Schema.Types.ObjectId, ref: "ChamaMember", required: true },
+  member: { type: mongoose.Schema.Types.ObjectId, ref: "ChamaMember" },
+  user: {type: mongoose.Schema.Types.ObjectId, ref: 'user', required: true},
   group: { type: mongoose.Schema.Types.ObjectId, ref: "ChamaGroup", required: true },
   amount: { type: Number, required: true },
   mpesaCode: { type: String },
