@@ -11,19 +11,15 @@ const transporter = nodemailer.createTransport({
 });
 
 const sendInviteEmail = async (email, groupName, token, groupId) => {
-  const acceptLink = `${process.env.FRONTEND_URL}/accept-invite?token=${token}&groupId=${groupId}`;
+  // const acceptLink = `${process.env.FRONTEND_URL}/accept-invite?token=${token}&groupId=${groupId}`;
   
   await transporter.sendMail({
     to: email,
-    subject: `You're invited to ${groupName}`,
+    subject: `${groupName} Invitation`,
     html: `
       <h2>Join ${groupName}</h2>
-      <p>Click below to accept your invitation:</p>
-      <a href="${acceptLink}" 
-         style="padding: 10px 20px; background: #1890ff; color: white; text-decoration: none; border-radius: 5px;">
-         Accept Invitation
-      </a>
-      <p>Or copy this link: ${acceptLink}</p>
+      <p>You have been invited to join ${groupName}</p>
+     <p>Login to your account and navigated to invited campaigns to view the campaign details</>
     `
   });
 };

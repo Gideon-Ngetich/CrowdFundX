@@ -175,11 +175,6 @@ const Dashboard = () => {
                     />
                   }
                   className="z-0"
-                  actions={[
-                    <Tag color={campaign.type === 'chama' ? 'blue' : 'green'}>
-                      {campaign.type || 'Funding'}
-                    </Tag>
-                  ]}
                 >
                   <Meta
                     title={campaign.campaignTitle}
@@ -242,12 +237,7 @@ const Dashboard = () => {
                     />
                   }
                   className="z-0"
-                  actions={[
-                    <Tag color="blue">Chama</Tag>,
-                    <Text>
-                      <MailOutlined /> {chama.createdBy?.email || 'Unknown'}
-                    </Text>
-                  ]}
+                  
                 >
                   <Meta title={chama.name} description={chama.description} />
                   <Text style={{ display: 'block', marginBottom: 8 }}>

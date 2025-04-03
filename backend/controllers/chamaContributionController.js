@@ -2,27 +2,30 @@ const { getAccessToken, getTimestamp, generatePassword } = require('../utils/Mpe
 const { ChamaContribution } = require('../models/ChamaContribution.model');
 const { ChamaMember } = require('../models/ChamaMembers.model');
 const { ChamaGroup } = require('../models/ChamaGroups.model');
+const { User } = require("../models/user.model")
 const axios = require('axios')
 
 exports.initiateContribution = async (req, res) => {
   try {
     const { memberId, groupId, amount, userId } = req.body;
 
-    // Get group with current cycle
-    const group = await ChamaGroup.findById(groupId);
+    // Verify both user and member exist
+    const [group, member, user] = await Promise.all([
+      ChamaGroup.findById(groupId),
+      ChamaMember.findOne({ _id: memberId, group: groupId }),
+      User.findById(userId)
+    ]);
+
     if (!group) return res.status(404).json({ error: 'Group not found' });
-    console.log({"userId": userId})
-
-    // Verify member belongs to group
-    const member = await ChamaMember.findOne({
-      _id: memberId,
-      group: groupId
-    });
-
-    console.log({"Mmbers": member})
     if (!member) return res.status(404).json({ error: 'Member not found in this group' });
+    if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // Check if member already contributed this cycle
+    // Verify member belongs to user
+    if (member.user.toString() !== userId) {
+      return res.status(403).json({ error: 'This member does not belong to you' });
+    }
+
+    // Check for existing contribution
     const existingContribution = await ChamaContribution.findOne({
       member: memberId,
       group: groupId,
@@ -36,7 +39,7 @@ exports.initiateContribution = async (req, res) => {
       });
     }
 
-    // Initiate STK Push with current cycle
+    // Initiate STK Push
     const token = await getAccessToken();
     const timestamp = getTimestamp();
     const password = generatePassword(
@@ -68,13 +71,13 @@ exports.initiateContribution = async (req, res) => {
       }
     );
 
-    // Save contribution with current cycle
+    // Save contribution with both references
     const contribution = new ChamaContribution({
       member: memberId,
       user: userId,
       group: groupId,
       amount,
-      cycleNumber: group.currentCycle, // This is the key addition
+      cycleNumber: group.currentCycle,
       status: 'pending',
       requestId: response.data.CheckoutRequestID
     });
