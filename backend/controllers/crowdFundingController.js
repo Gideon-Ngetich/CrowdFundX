@@ -74,6 +74,7 @@ router.post("/crowddonation", async (req, res) => {
 
         // Include campaignId in callback URL
         const callbackURL = `${mpesaDetails.callbackURL}?campaignId=${campaignId}`;
+        console.log(callbackURL)
 
         const stkPushData = {
             BusinessShortCode: mpesaDetails.businessShortCode,
@@ -120,6 +121,7 @@ router.post("/callback", async (req, res) => {
         }
 
         const callback = req.body.Body?.stkCallback;
+        console.log({"Callback": callback})
         if (!callback) {
             return res.status(400).json({ message: "Invalid callback format" });
         }
